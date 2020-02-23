@@ -16,7 +16,7 @@ class ViewController: UIViewController {
 
     var directionsRoute: Route?
     var mapView: NavigationMapView!
-    var disneyLandCoordinate = CLLocationCoordinate2D(latitude: 40.74296, longitude: -73.94411)
+    var pursuitCoordinates = CLLocationCoordinate2D(latitude: 40.74296, longitude: -73.94411)
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -42,7 +42,7 @@ class ViewController: UIViewController {
         button.layer.shadowOffset = CGSize(width: 0, height: 10)
         button.layer.shadowColor = UIColor.gray.cgColor
         button.layer.shadowRadius = 5
-        button.layer.shadowOpacity = 0.3
+        button.layer.shadowOpacity = 0.4
         button.addTarget(self, action: #selector(navi(_:)), for: .touchUpInside)
         view.addSubview(button)
     }
@@ -50,10 +50,10 @@ class ViewController: UIViewController {
     @objc func navi(_ sender: UIButton) {
         mapView.setUserTrackingMode(.none, animated: true, completionHandler: nil)
         let annotation = MGLPointAnnotation()
-        annotation.coordinate = disneyLandCoordinate
+        annotation.coordinate = pursuitCoordinates
         annotation.title = "Start Navigation"
         mapView.addAnnotation(annotation)
-        calculateRoute(from: mapView.userLocation!.coordinate, to: disneyLandCoordinate) { (route, error) in
+        calculateRoute(from: mapView.userLocation!.coordinate, to: pursuitCoordinates) { (route, error) in
             if error != nil {
                 print("error getting route")
             }
@@ -64,7 +64,7 @@ class ViewController: UIViewController {
         let origin = Waypoint(coordinate: originCoord, coordinateAccuracy: -1, name: "Start")
         let destination = Waypoint(coordinate: destinationCoord, coordinateAccuracy: -1, name: "Finish")
         let options = NavigationRouteOptions(waypoints: [origin, destination], profileIdentifier: .automobileAvoidingTraffic)
-        _ = Directions.shared.calculate(options, completionHandler: { (waypoints, routes, error) in
+        _ = Directions.shared.calculate(options, completionHandler: { [unowned self] (waypoints, routes, error) in
             guard let directionRoute = routes?.first else { return }
             self.directionsRoute = directionRoute
             self.drawRoute(route: directionRoute)
@@ -78,7 +78,7 @@ class ViewController: UIViewController {
     func drawRoute(route: Route) {
         guard route.coordinateCount > 0 else { return }
         var routeCoordinates = route.coordinates!
-        let polyLine = MGLPolygonFeature(coordinates: &routeCoordinates, count: route.coordinateCount)
+        let polyLine = MGLPolylineFeature(coordinates: &routeCoordinates, count: route.coordinateCount)
         if let source = mapView.style?.source(withIdentifier: "route-source") as? MGLShapeSource {
             source.shape = polyLine
         } else {
@@ -86,6 +86,7 @@ class ViewController: UIViewController {
             let lineStyle = MGLLineStyleLayer(identifier: "route-style", source: source)
             lineStyle.lineColor = NSExpression(forConstantValue: UIColor.green)
             lineStyle.lineWidth = NSExpression(forConstantValue: 4.0)
+            lineStyle.lineCap = NSExpression(forConstantValue: "round")
             mapView.style?.addSource(source)
             mapView.style?.addLayer(lineStyle)
         }
